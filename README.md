@@ -1,6 +1,6 @@
 ## CSCI 339 Distributed Systems
-## Lab3 Contextual Advertising	
-### Josh Kang and Daniel Yu
+### Final Project	
+#### Josh Kang and Daniel Yu
 
 Compile instructions:
 
