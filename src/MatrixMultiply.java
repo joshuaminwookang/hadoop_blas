@@ -2,7 +2,6 @@
  * MapReduce job(s) to calculate Matrix Multiply
  * (c) 2020 CSCI339 Kang and Yu
  */
-
 // Java IO Packages
 import java.io.IOException;
 import java.util.Iterator;
@@ -34,32 +33,27 @@ import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapreduce.lib.jobcontrol.JobControl;
 import org.apache.hadoop.mapreduce.lib.jobcontrol.ControlledJob;
 
-// JSON Simple 
-//import org.json.simple.*;
-//import org.json.simple.parser.*;
-//import org.json.simple.JSONObject;
-
 /**
  *  MapReduce job chain that 
  * (1) pipes impressions and click logs to produce intermediate ([ referrer, ad_id] , clicked/not clicked) key-val pairs
  * (2) pipes ([ referrer, ad_id] , clicked/not clicked) key-val pairs to produce cumulative [referrer,ad_id], click-through rate
  */
-public class Dot {
+public class MatrixMultiply {
+
     public static void main(String[] args) throws Exception {
 	if (args.length < 2) {
 	    System.err.println("Error: Wrong number of parameters");
 	    System.err.println("Expected: [in] [out]");
 	    System.exit(1);
 	}
-
 	Configuration conf = new Configuration();
 
 	Job job = Job.getInstance(conf, "trivial job");
-	job.setJarByClass(Dot.class);
+	job.setJarByClass(MatrixMultiply.class);
 
 	// set the Mapper and Reducer functions we want
-	job.setMapperClass(Dot.IdentityMapper.class);
-	job.setReducerClass(Dot.IdentityReducer.class);	
+	job.setMapperClass(MatrixMultiply.MMMapper.class);
+	job.setReducerClass(MatrixMultiply.MMReducer.class);
 	job.setMapOutputKeyClass(DoubleWritable.class);
 	job.setMapOutputValueClass(DoubleWritable.class);
 	job.setOutputKeyClass(DoubleWritable.class);
@@ -74,45 +68,47 @@ public class Dot {
 
     /**
      * map: (LongWritable, Text) --> (LongWritable, Text)
-     * NOTE: Keys must implement WritableComparable, values must implement Writable
+     * Reads both logs; for Impressions Log, produce (impression_id, [referrer, ad_id])
+     * For Clicks log, produce (impression_id, click or not)
      */
-    public static class IdentityMapper extends Mapper < LongWritable, Text,
-	DoubleWritable, DoubleWritable > {
+    public static class MMMapper extends Mapper < LongWritable, Text,
+					       DoubleWritable, DoubleWritable > {
 
-	@Override
-	public void map(LongWritable key, Text val, Context context)
-	    throws IOException, InterruptedException {
-	    // write (key, val) out to memory/disk
-	    // uncomment for debugging
-	    //System.out.println("key: "+key+" val: "+val);
-	    String[] vals = val.toString().split("\t");
-	    double product = Double.parseDouble(vals[0]) * Double.parseDouble(vals[1]);	       
-	    //System.out.println(product);
-	    //System.out.println(vals);
-	    context.write(new DoubleWritable(1), new DoubleWritable(product));
-	}
-
+	        @Override
+		public void map(LongWritable key, Text val, Context context)
+		    throws IOException, InterruptedException {
+		    // write (key, val) out to memory/disk
+		    // uncomment for debugging
+		    //System.out.println("key: "+key+" val: "+val);
+		    String[] vals = val.toString().split("\t");
+		    double product = 0.0;
+		    int len = vals.length/2;
+		    for (int i = 0; i < len; i++) {
+			product += Double.parseDouble(vals[i]) * Double.parseDouble(vals[i+len]);
+		    }
+		    //System.out.println(product);
+		    //System.out.println(vals);
+		    context.write(new DoubleWritable(key.get()), new DoubleWritable(product));
+		}
     }
 
+    
     /**
-     * reduce: (LongWritable, Text) --> (LongWritable, Text)
+     * reduce: (Text, Text) --> (Text, Text)
+     * Produce intermediate file; for each impression, create [referrer, adId] + 1 or 0 
      */
-    public static class IdentityReducer extends Reducer < DoubleWritable, DoubleWritable,
+    public static class MMReducer extends Reducer < DoubleWritable, DoubleWritable,
 						DoubleWritable, DoubleWritable > {
 
-	@Override
-	public void reduce(DoubleWritable key, Iterable < DoubleWritable > values, Context context)
-	    throws IOException, InterruptedException {
-	    // write (key, val) for every value
-	    double sum = 0;
-	    for (DoubleWritable val : values) {
-		// uncomment for debugging
-		sum += val.get();
-		//System.out.println("key: "+key+" val: "+val);
-	    }
-	    //System.out.println("sum: "+sum);
-	    context.write(key, new DoubleWritable(sum));
-	}
+	        @Override
+		public void reduce(DoubleWritable key, Iterable < DoubleWritable > values, Context context)
+		    throws IOException, InterruptedException {
+		    // write (key, val) for every value
+		    for (DoubleWritable val : values) {
+			context.write(key, val);
+		    }
+		}
 
     }
+
 }
