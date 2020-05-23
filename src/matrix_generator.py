@@ -2,7 +2,7 @@ import numpy as np
 from numpy import asarray
 from numpy import savetxt
 
-n = 1000
+n = 10
 ma = np.random.uniform(-5.0, 5.0, (n,n))
 mboriginal = np.random.uniform(-5.0, 5.0, (n,n))
 mb = mboriginal.transpose()

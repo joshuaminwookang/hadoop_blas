@@ -8,4 +8,4 @@ Compile instructions:
 
    make build
    
-* Run <code> bin/hadoop jar build.jar ClickRate [impressions_merged] [clicks_merged] [output] </code>
+
